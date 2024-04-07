@@ -48,11 +48,11 @@ std::string time_to_str(Time t)
   seconds %= 60;
   int hours = minutes / 60;
   minutes %= 60;
-  int millis = (int)((t - seconds) * 1000.0);
+  int millis = (int)((t - (int)t) * 1000.0);
   char buf[32];  // give it enough space to shut up the compiler for impossible
                  // numbers.
   std::snprintf(
-    buf, sizeof(buf), "%02d:%02d:%02d,%03d", hours, minutes, seconds, millis
+    buf, sizeof(buf), "%d:%02d:%02d.%03d", hours, minutes, seconds, millis
   );
   return std::string(buf);
 }
