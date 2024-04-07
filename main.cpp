@@ -49,7 +49,8 @@ std::string time_to_str(Time t)
   int hours = minutes / 60;
   minutes %= 60;
   int millis = (int)((t - seconds) * 1000.0);
-  char buf[16];
+  char buf[32];  // give it enough space to shut up the compiler for impossible
+                 // numbers.
   std::snprintf(
     buf, sizeof(buf), "%02d:%02d:%02d,%03d", hours, minutes, seconds, millis
   );
@@ -321,6 +322,11 @@ int main(int argc, char **argv)
         program.get("--o-enc").c_str()
       );
     }
+
+    if (bottom_srt.subtitles.empty()) {
+      std::cout << "Bottom subtitle file does not contain any subtitles.\n";
+      return 1;
+    }
   }
 
   SRT_File top_srt;
@@ -334,6 +340,11 @@ int main(int argc, char **argv)
       convert_encoding(
         top_srt, program.get("--t-enc").c_str(), program.get("--o-enc").c_str()
       );
+    }
+
+    if (top_srt.subtitles.empty()) {
+      std::cout << "Top subtitle file does not contain any subtitles.\n";
+      return 1;
     }
   }
 
@@ -365,16 +376,20 @@ int main(int argc, char **argv)
     std::cout << "Auto syncing...\n";
     double best_distance = std::numeric_limits<double>::max();
     double best_shift = 0;
-    for (int offset = -5; offset <= 5; ++offset) {
-      SRT_Subtitle &a = top_srt.subtitles[5 + offset];
-      SRT_Subtitle &b = bottom_srt.subtitles[5];
-      double shift = b.start - a.start;
-      std::cout << "Attempting shift: " << offset << " with time " << shift << " seconds...";
-      double distance = alignment_distance(bottom_srt, top_srt, shift);
-      std::cout << "  Distance: " << distance << "\n";
-      if (distance < best_distance) {
-        best_distance = distance;
-        best_shift = shift;
+    int search_range = std::min(10, (int)bottom_srt.subtitles.size() / 2);
+    for (int offset = -search_range; offset <= search_range; ++offset) {
+      if (search_range + offset < (int)top_srt.subtitles.size()) {
+        SRT_Subtitle &a = top_srt.subtitles[search_range + offset];
+        SRT_Subtitle &b = bottom_srt.subtitles[search_range];
+        double shift = b.start - a.start;
+        std::cout << "  Attempting shift: " << std::setw(3) << offset << " with a time-delta of " << std::setw(8) << shift
+                  << " seconds...";
+        double distance = alignment_distance(bottom_srt, top_srt, shift);
+        std::cout << "  Distance: " << distance << "\n";
+        if (distance < best_distance) {
+          best_distance = distance;
+          best_shift = shift;
+        }
       }
     }
     std::cout << "Best shift found: " << best_shift << " seconds\n";
