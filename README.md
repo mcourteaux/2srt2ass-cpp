@@ -1,15 +1,19 @@
-# 2srt2ass++
+# 💬 2srt2ass++
 
 Merge two SRT subtitle files into an ASS file for dual language subtitles.
 
-## Features
+## ⭐ Features
 
  - 🔄 Character encoding conversion (see `--t-enc`, `--b-enc`, and `--o-enc`).
- - ⏱  Manual time shifting.
+ - ⏱️ Manual time shifting.
  - 🦺 Manual synchronization based on two given subtitle indices (e.g., 'synchronize Dutch subtitle number 5 with English subtitle number 7').
  - 🪄 Automatic time shifting, by letting 2srt2ass++ guess the correct alignment of the top SRT file to match up with the bottom SRT file.
 
-## Synopsis
+## 🔨 Build
+Depends on GNU `libiconv` to do character conversion.
+Then run `make` to compile this program.
+
+## ❓ Synopsis
 
 ```
 Usage: ./2srt2ass++ [--help] [--version] --bottom VAR [--bottom-enc VAR] [--bottom-tshift VAR] --top VAR [--top-enc VAR] [--top-tshift VAR] [--sync-top-to-bottom VAR...] [--auto-sync-top-to-bottom] --output VAR [--o-enc VAR]
@@ -29,6 +33,14 @@ Optional arguments:
   --o-enc                                    Output encoding [nargs=0..1] [default: "UTF-8"]
 ```
 
-## License
+To get a list of supported character encodings, use:
+
+```sh
+iconv -l
+```
+
+To guess the character encoding, use [`enca`](https://linux.die.net/man/1/enca).
+
+## ⚖️ License
 
 MIT-License
