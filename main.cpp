@@ -8,7 +8,6 @@
 #include <limits>
 
 #include "argparse.hpp"
-
 #include <iconv.h>
 
 using Time = double;
@@ -50,7 +49,7 @@ std::string time_to_str(Time t)
   int hours = minutes / 60;
   minutes %= 60;
   int millis = (int)((t - seconds) * 1000.0);
-  char buf[20];
+  char buf[16];
   std::snprintf(
     buf, sizeof(buf), "%02d:%02d:%02d,%03d", hours, minutes, seconds, millis
   );
