@@ -8,6 +8,7 @@ Merge two SRT subtitle files into an ASS file for dual language subtitles.
  - ⏱️ Manual time shifting.
  - 🦺 Manual synchronization based on two given subtitle indices (e.g., 'synchronize Dutch subtitle number 5 with English subtitle number 7').
  - 🪄 Automatic time shifting, by letting 2srt2ass++ guess the correct alignment of the top SRT file to match up with the bottom SRT file.
+ - 🖊️ Support for italics and bold face conversions.
 
 ## 🔨 Build
 Depends on GNU `libiconv` to do character conversion.
