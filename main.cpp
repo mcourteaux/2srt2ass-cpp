@@ -36,23 +36,33 @@ Time parse_time(std::string_view view)
   assert_good(result_s, "second");
   assert_good(result_f, "decimal part of second");
   double scale[] = {0.1f, 0.01f, 0.001f, 0.0001f};
-  int fraction_size = view.size() - s2 - 1;
+  int fraction_size = view.size() - (s2 + 1);
+  if (fraction_size > 3) {
+    std::cout << "Too many decimals in time: " << view
+              << ", fraction=" << view.substr(s2 + 1) << "\n";
+    std::cout << "view.size() = " << view.size() << "\n";
+    std::cout << "s2 + 1 = " << s2 + 1 << "\n";
+    for (char c : view) {
+      std::cout << " char: " << (int)c << "\n";
+    }
+    exit(1);
+  }
   return (hour * 3600 + minute * 60 + second)
     + (fraction * scale[fraction_size - 1]);
 }
 
-std::string time_to_str(Time t)
+std::string time_to_ass_str(Time t)
 {
   int seconds = (int)t;
   int minutes = seconds / 60;
   seconds %= 60;
   int hours = minutes / 60;
   minutes %= 60;
-  int millis = (int)((t - (int)t) * 1000.0);
+  int centis = (int)((t - (int)t) * 100.0);
   char buf[32];  // give it enough space to shut up the compiler for impossible
                  // numbers.
   std::snprintf(
-    buf, sizeof(buf), "%d:%02d:%02d.%03d", hours, minutes, seconds, millis
+    buf, sizeof(buf), "%d:%02d:%02d.%02d", hours, minutes, seconds, centis
   );
   return std::string(buf);
 }
@@ -115,7 +125,7 @@ SRT_File parse_srt_file(std::istream &in)
     int s1 = line.find(' ', s0 + 1);
     sub.start = parse_time(std::string_view(line.data(), s0));
     sub.stop =
-      parse_time(std::string_view(line.data() + s1 + 1, line.size() - s1));
+      parse_time(std::string_view(line.data() + s1 + 1, line.size() - s1 - 1));
 
     // Get the lines of actual text.
     do {
@@ -129,7 +139,7 @@ SRT_File parse_srt_file(std::istream &in)
       if (sub.text.empty()) {
         sub.text = std::move(line);
       } else {
-        sub.text += "\\N";
+        sub.text += "\n";
         sub.text += line;
       }
     } while (true);
@@ -191,27 +201,65 @@ void time_shift(SRT_File &srt, double shift)
   }
 }
 
+void replace_all(
+  std::string &s,
+  std::string const &to_replace,
+  std::string const &replace_with
+)
+{
+  std::string buf;
+  std::size_t pos = 0;
+  std::size_t prevPos;
+
+  // Reserves rough estimate of final size of string.
+  buf.reserve(s.size());
+
+  while (true) {
+    prevPos = pos;
+    pos = s.find(to_replace, pos);
+    if (pos == std::string::npos)
+      break;
+    buf.append(s, prevPos, pos - prevPos);
+    buf += replace_with;
+    pos += to_replace.size();
+  }
+
+  buf.append(s, prevPos, s.size() - prevPos);
+  s.swap(buf);
+}
+
+std::string text_to_ass_text(std::string text)
+{
+  replace_all(text, "\r\n", "\n");
+  replace_all(text, "\n", "\\N");
+  replace_all(text, "<i>", "{\\i1}");
+  replace_all(text, "</i>", "{\\i0}");
+  replace_all(text, "<b>", "{\\b0}");
+  replace_all(text, "</b>", "{\\b0}");
+  return text;
+}
+
 void write_ass_file(std::ostream &out, const ASS_File &ass)
 {
   // clang-format off
-  out << "[Script Info]\n";
-  out << "ScriptType: v4.00+\n";
-  out << "Collisions: Normal\n";
-  out << "PlayDepth: 0\n";
-  out << "Timer: 100,0000\n";
-  out << "Video Aspect Ratio: 0\n";
-  out << "WrapStyle: 0\n";
-  out << "ScaledBorderAndShadow: no\n";
-  out << "\n";
-  out << "[V4+ Styles]\n";
-  out << "Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding\n";
-  //out << "Style: Default,Arial,16,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,3,0,2,10,10,10,0\n";
-  out << "Style: Top,Arial,16,&H00F9FFFF,&H00FFFFFF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,3,0,8,10,10,10,0\n";
-  //out << "Style: Mid,Arial,16,&H0000FFFF,&H00FFFFFF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,3,0,5,10,10,10,0\n";
-  out << "Style: Bot,Arial,16,&H00F9FFF9,&H00FFFFFF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,3,0,2,10,10,10,0\n";
-  out << "\n";
-  out << "[Events]\n";
-  out << "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n";
+  out << "[Script Info]\r\n";
+  out << "ScriptType: v4.00+\r\n";
+  out << "Collisions: Normal\r\n";
+  out << "PlayDepth: 0\r\n";
+  out << "Timer: 100,0000\r\n";
+  out << "Video Aspect Ratio: 0\r\n";
+  out << "WrapStyle: 0\r\n";
+  out << "ScaledBorderAndShadow: no\r\n";
+  out << "\r\n";
+  out << "[V4+ Styles]\r\n";
+  out << "Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding\r\n";
+  //out << "Style: Default,Arial,16,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,3,0,2,10,10,10,0\r\n";
+  out << "Style: Top,Arial,16,&H00F9FFFF,&H00FFFFFF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,3,0,8,10,10,10,0\r\n";
+  //out << "Style: Mid,Arial,16,&H0000FFFF,&H00FFFFFF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,3,0,5,10,10,10,0\r\n";
+  out << "Style: Bot,Arial,16,&H00F9FFF9,&H00FFFFFF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,3,0,2,10,10,10,0\r\n";
+  out << "\r\n";
+  out << "[Events]\r\n";
+  out << "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\r\n";
   // clang-format on
 
   std::string styles[2] = {"Bot", "Top"};
@@ -219,10 +267,10 @@ void write_ass_file(std::ostream &out, const ASS_File &ass)
   for (size_t i = 0; i < ass.subtitles.size(); ++i) {
     const ASS_Subtitle &sub = ass.subtitles[i];
     out << "Dialogue: 0,";
-    out << time_to_str(sub.start) << "," << time_to_str(sub.stop);
+    out << time_to_ass_str(sub.start) << "," << time_to_ass_str(sub.stop);
     out << "," << styles[sub.style] << ",,0000,0000,0000,,";
-    out << sub.text;
-    out << "\n";
+    out << text_to_ass_text(sub.text);
+    out << "\r\n";
   }
 }
 
@@ -348,8 +396,25 @@ int main(int argc, char **argv)
     }
   }
 
+  std::cout << "Top subtitle file contains " << bottom_srt.subtitles.size()
+            << " subtitles.\n";
+  std::cout << "Top subtitle file contains " << top_srt.subtitles.size()
+            << " subtitles.\n";
+
   if (program.is_used("--sync-tb")) {
     auto pair = program.get<std::vector<int>>("--sync-tb");
+    if (pair[0] >= (int)bottom_srt.subtitles.size() || pair[0] < 0) {
+      std::cout << "Subtitle index " << pair[0]
+                << " is out of bounds for the bottom subtitle file, which has "
+                << bottom_srt.subtitles.size() << " subtitles.\n";
+      return 1;
+    }
+    if (pair[1] >= (int)bottom_srt.subtitles.size() || pair[1] < 0) {
+      std::cout << "Subtitle index " << pair[1]
+                << " is out of bounds for the top subtitle file, which has "
+                << top_srt.subtitles.size() << " subtitles.\n";
+      return 1;
+    }
     SRT_Subtitle &bot = bottom_srt.subtitles[pair[0]];
     SRT_Subtitle &top = top_srt.subtitles[pair[1]];
     std::cout << "Syncing top to bottom: top[" << pair[1] << "] -> bottom["
@@ -382,7 +447,8 @@ int main(int argc, char **argv)
         SRT_Subtitle &a = top_srt.subtitles[search_range + offset];
         SRT_Subtitle &b = bottom_srt.subtitles[search_range];
         double shift = b.start - a.start;
-        std::cout << "  Attempting shift: " << std::setw(3) << offset << " with a time-delta of " << std::setw(8) << shift
+        std::cout << "  Attempting shift: " << std::setw(3) << offset
+                  << " with a time-delta of " << std::setw(8) << shift
                   << " seconds...";
         double distance = alignment_distance(bottom_srt, top_srt, shift);
         std::cout << "  Distance: " << distance << "\n";
