@@ -310,7 +310,8 @@ int main(int argc, char **argv)
 
   program.add_argument("-b", "--bottom")
     .help("SRT file for the bottom subtitles file.")
-    .required();
+    //.required()
+    ;
   program.add_argument("--b-enc", "--bottom-enc")
     .help("Encoding of the bottom SRT file.")
     .default_value("UTF-8");
@@ -320,7 +321,8 @@ int main(int argc, char **argv)
 
   program.add_argument("-t", "--top")
     .help("SRT file for the top subtitles file.")
-    .required();
+    //.required()
+    ;
   program.add_argument("--t-enc", "--top-enc")
     .help("Encoding of the top SRT file.")
     .default_value("UTF-8");
@@ -357,7 +359,7 @@ int main(int argc, char **argv)
   }
 
   SRT_File bottom_srt;
-  {
+  if (program.is_used("--bottom")) {
     std::cout << "Reading bottom SRT file...\n";
     std::string srt_filename = program.get("--bottom");
     std::ifstream in(srt_filename);
@@ -378,7 +380,7 @@ int main(int argc, char **argv)
   }
 
   SRT_File top_srt;
-  {
+  if (program.is_used("--top")) {
     std::cout << "Reading top SRT file...\n";
     std::string srt_filename = program.get("--top");
     std::ifstream in(srt_filename);
