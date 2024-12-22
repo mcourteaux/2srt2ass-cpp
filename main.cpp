@@ -114,15 +114,18 @@ SRT_File parse_srt_file(std::istream &in)
 
     // Parse number
     get_line(in, line);
-    if (in.eof()) {
+    if (in.eof() || line.empty()) {
       break;
     }
     std::from_chars(line.data(), line.data() + line.size(), sub.num);
 
     // Parse time info
     get_line(in, line);
-    int s0 = line.find(' ');
-    int s1 = line.find(' ', s0 + 1);
+    size_t s0 = line.find(' ');
+    size_t s1 = line.find(' ', s0 + 1);
+    if (s0 == std::string::npos || s1 == std::string::npos) {
+      break;
+    }
     sub.start = parse_time(std::string_view(line.data(), s0));
     sub.stop =
       parse_time(std::string_view(line.data() + s1 + 1, line.size() - s1 - 1));
