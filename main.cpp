@@ -291,15 +291,29 @@ double alignment_distance(const SRT_File &a, const SRT_File &b, double offset_b)
     Time start = a.subtitles[idx_a].start - offset_b;
     Time stop = a.subtitles[idx_a].stop - offset_b;
 
-    auto it = std::lower_bound(
+    const double search_window = 8.0; // seconds.
+
+    const auto it_start = std::lower_bound(
       b.subtitles.begin(),
       b.subtitles.end(),
-      start,
+      start - search_window * 0.5,
       SRT_Subtitle_Time_Comparator()
     );
 
-    if (it != b.subtitles.end()) {
-      const SRT_Subtitle &sub_b = *it;
+    auto it = it_start;
+    auto it_closest = it;
+    while (it != b.subtitles.end()) {
+      if (std::abs(it->start - start) < std::abs(it_closest->start - start)) {
+        it_closest = it;
+      }
+      if (it->start > start + search_window * 0.5) {
+        break;
+      }
+      it++;
+    }
+
+    if (it_closest != b.subtitles.end()) {
+      const SRT_Subtitle &sub_b = *it_closest;
       distance += std::abs(sub_b.start - start);
       distance += std::abs(sub_b.stop - stop);
     }
@@ -446,17 +460,16 @@ int main(int argc, char **argv)
     std::cout << "Auto syncing...\n";
     double best_distance = std::numeric_limits<double>::max();
     double best_shift = 0;
-    for (double shift = -10.0; shift <= 10.0; shift += 0.1) {
-      std::cout << "  Attempting shift with a time-delta of " << std::setw(8)
-                << shift << " seconds...";
-      double distance = alignment_distance(bottom_srt, top_srt, shift);
-      std::cout << "  Distance: " << distance << "\n";
-      if (distance < best_distance) {
-        best_distance = distance;
+    for (double shift = -10.0; shift <= 10.001; shift += 0.05) {
+      double distance_A = alignment_distance(bottom_srt, top_srt, shift);
+      double distance_B = alignment_distance(top_srt, bottom_srt, -shift);
+      std::printf("  Attempting shift %+6.2f seconds... Distance: %8.1f | %8.1f\n", shift, distance_A, distance_B);
+      if (distance_A + distance_B < best_distance) {
+        best_distance = distance_A + distance_B;
         best_shift = shift;
       }
     }
-    std::cout << "Best shift found: " << best_shift << " seconds\n";
+    std::printf("Best shift found: %.2f seconds\n", best_shift);
 
     time_shift(top_srt, best_shift);
   }
