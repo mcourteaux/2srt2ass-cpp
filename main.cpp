@@ -446,21 +446,14 @@ int main(int argc, char **argv)
     std::cout << "Auto syncing...\n";
     double best_distance = std::numeric_limits<double>::max();
     double best_shift = 0;
-    int search_range = std::min(10, (int)bottom_srt.subtitles.size() / 2);
-    for (int offset = -search_range; offset <= search_range; ++offset) {
-      if (search_range + offset < (int)top_srt.subtitles.size()) {
-        SRT_Subtitle &a = top_srt.subtitles[search_range + offset];
-        SRT_Subtitle &b = bottom_srt.subtitles[search_range];
-        double shift = b.start - a.start;
-        std::cout << "  Attempting shift: " << std::setw(3) << offset
-                  << " with a time-delta of " << std::setw(8) << shift
-                  << " seconds...";
-        double distance = alignment_distance(bottom_srt, top_srt, shift);
-        std::cout << "  Distance: " << distance << "\n";
-        if (distance < best_distance) {
-          best_distance = distance;
-          best_shift = shift;
-        }
+    for (double shift = -10.0; shift <= 10.0; shift += 0.1) {
+      std::cout << "  Attempting shift with a time-delta of " << std::setw(8)
+                << shift << " seconds...";
+      double distance = alignment_distance(bottom_srt, top_srt, shift);
+      std::cout << "  Distance: " << distance << "\n";
+      if (distance < best_distance) {
+        best_distance = distance;
+        best_shift = shift;
       }
     }
     std::cout << "Best shift found: " << best_shift << " seconds\n";
